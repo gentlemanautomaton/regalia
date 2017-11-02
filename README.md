@@ -131,17 +131,18 @@ additional reads as back-references are followed.
 
 Types with back-references may be chained, thus increasing the indirection
 required to locate a particular attribute's data stream. If regalia determines
-that an indirection limit would be exceeded by an addition of a new
-back-reference, regalia will instead collapse the attribute changes into a
-newly allocated copy of the real type without any back-references.
+that an indirection limit would be exceeded by the addition of a new
+back-reference, it will instead collapse the attributes into a newly allocated
+copy of the real type without any back-references. This design is intended to
+strike a balance between space efficiency, read efficiency and write efficiency.
 
 A potential optimization here would be to build a computational machine for
-each type that quickly retrieves a particular attribute. Once constructed and
-cached in-memory, each retrieval would run the machine associated with the
-desired attribute.
+each type and psuedo-type that quickly retrieves a particular attribute. Once
+constructed and cached in-memory, each retrieval would run the machine
+associated with the desired attribute for a particular type.
 
-The underlying assumption is that regalia is used to store values with common
-types that follow common type transitions.
+The underlying assumption behind the type system is that regalia is used
+to store values with common types that follow common type transitions.
 
 Inspiration for attribute design can be drawn from the following:
 
@@ -151,9 +152,13 @@ Inspiration for attribute design can be drawn from the following:
 
 ## Address Space
 
-Most data in regalia is saved into a theoretically limitless append-only byte
-stream. Back-references are offsets into that stream used to refer back to
-previously written data.
+Most data in regalia is saved into a theoretically limitless append-only root
+byte stream. Addresses (back-references) are offsets into the byte stream that
+refer back to previously written data.
+
+Under consideration is the encoding of addresses in relative form instead of
+absolute form. Relative addresses would store the offset back from the position
+of the address itself, effectively encoding things like "50 bytes ago".
 
 In order to minimize the distance that back-references must go into the past,
 regalia will occasionally copy data forward and update values to use the new
@@ -161,7 +166,7 @@ back-references. This allows stale data that appeared earlier in the byte
 stream to be archived, truncated or moved onto slower storage media. Offsets
 within the stream are never reused, even when data has been truncated.
 
-Under consideration is multiplexing of the data stream. The stream could be
+Under consideration is multiplexing of the root byte stream. The stream could be
 divided into chunks of typed substreams: FST nodes, transitions, values,
 etc. Multiplexing may improve the locality of reference for FST traversal. A
 multiplexing layer added over the top of the root data stream would incur
@@ -169,6 +174,7 @@ additional complexity.
 
 Inspiration for data stream design can be drawn from the following:
 
+* Distributed Computing Environment Remote Procedure Call Pointers
 * NTFS Change journals
 
 ## Data Blocks
