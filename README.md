@@ -70,8 +70,8 @@ a way that feels natural:
 
 * Separate content from metadata
 * Store things like access control lists, file origin information and author
+* Associate keys with unique identifiers and hashes
 * Perform iterative data processing and conversion
-* Map ordinal identifiers to data stream names
 
 Each value in regalia is made up of one or more data streams, commonly called
 attributes. Each attribute has an identifier that distinguishes it and an
