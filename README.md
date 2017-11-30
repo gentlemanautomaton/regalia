@@ -224,6 +224,52 @@ Inspiration for FST design can be drawn from the following:
 * [Ethereum Patricia Tries](https://github.com/ethereum/wiki/wiki/Patricia-Tree)
 * [Index 1,600,000,000 Keys with Automata and Rust](http://blog.burntsushi.net/transducers/)
 
+## Concurrency Control
+
+The regalia system of transactions uses an MVCC approach to provide each
+transaction with a consistent view of the data. However, this consistent view
+may be formed lazily, after the transaction has indicated what data it would
+like to access.
+
+Transactions occur in parallel unless they lock a portion of the tree.
+
+Under consideration is the use of interval tree clocks to keep local
+transactions strictly ordered in addition to distributed ones. Doing so would
+enable multiple transactions to occur in parallel while retaining an
+understanding of what order they occurred in.
+
+An ITC fork occurs if and only if transactions interfere with each other.
+Transactions operating in parallel that do not modify the data read by each
+other need not invoke the more complicated concurrency scheme, and instead use
+a simple ordering based on the time of commit (not the transaction start time).
+
+The current design proposal makes the transaction flow look something like this:
+
+1. A transaction is started
+2. Whenever the transaction reads data, the regalia framework ensures that it is
+   consistent with all previously read data.
+3. Whenever the transaction reads or writes data, the regalia framework notes
+   the accesses and watches for future conflicts.
+4. When a conflict occurs, the interval space is split and a portion is assigned
+	 to the transaction with an incremented clock. In ITC parlance, a fork occurs.
+5. The transaction is committed
+6. The regalia framework merges the committed data. If a fork had occurred the
+   ITC clocks are merged as part of the same atomic operation. If a
+	 fork had not occurred the ITC clocks are incremented without forking.
+
+In addition to the scheme above, which supports an optimistic view of
+concurrency, the transaction could manually identify portions of the state that
+must not be changed by an outside entity during the course of the transaction,
+effectively locking those portions of the tree. If another transaction
+conflicts with the locked data, one of the transactions is backed out and
+reattempted after the conflicting transaction has completed. This continues
+until a lock can be attained on the necessary portions. The implementation must
+be written carefully to avoid deadlocks.
+
+Transactions may perform a commit-and-hold, which flushes the commit data but
+retains the locks held by the commit. The locks are moved into a new
+transaction.
+
 ## Indexing
 
 Indexes are built per-attribute. Under consideration is something similar to
