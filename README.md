@@ -152,13 +152,15 @@ Inspiration for attribute design can be drawn from the following:
 
 ## Address Space
 
-Most data in regalia is saved into a theoretically limitless append-only root
-byte stream. Addresses (back-references) are offsets into the byte stream that
-refer back to previously written data.
+Data in regalia is saved into a theoretically limitless byte stream, starting
+at byte zero. Addresses are offsets into the byte stream that refer back to
+previously written data.
 
-Under consideration is the encoding of addresses in relative form instead of
-absolute form. Relative addresses would store the offset back from the position
-of the address itself, effectively encoding things like "50 bytes ago".
+Addresses are typically written in relative form instead of absolute form.
+Relative addresses store the offset back from the position of the address
+itself, effectively encoding things like "50 bytes ago". Doing so inverts the
+cost of variable-length encoding, making addresses near the end of the byte
+stream smaller to encode than addresses near the beginnning of the byte stream.
 
 In order to minimize the distance that back-references must go into the past,
 regalia will occasionally copy data forward and update values to use the new
@@ -166,20 +168,48 @@ back-references. This allows stale data that appeared earlier in the byte
 stream to be archived, truncated or moved onto slower storage media. Offsets
 within the stream are never reused, even when data has been truncated.
 
-Under consideration is multiplexing of the root byte stream. The stream could be
-divided into chunks of typed substreams: FST nodes, transitions, values,
-etc. Multiplexing may improve the locality of reference for FST traversal. A
-multiplexing layer added over the top of the root data stream would incur
-additional complexity.
-
 Inspiration for data stream design can be drawn from the following:
 
 * Distributed Computing Environment Remote Procedure Call Pointers
 * NTFS Change journals
 
+### Address Space Multiplexing
+
+The address space is divided into chunks of typed substreams, also called
+slabs. The allocation of address space to the substreams is managed by a
+multiplexing and allocation layer, the data for which is itself contained in
+a stream (known as the multiplexing stream, control stream or stream zero).
+
+Only the multiplexing stream is rewritable. All other streams are append-only.
+
+The substreams include:
+
+ * Multiplexing Data
+ * FST Data (Transitions, Values?)
+ * Transaction Data
+ * Bucket/Node Data
+ * Search Index Data
+ * etc.
+
+Multiplexing the address space into slabs of like-data is intended to improve
+the locality of reference for FST traversal.
+
+An ideal multiplexing implementation would support use over a file, volume or
+network.
+
+Proposal: Maintain multiple copies of the multiplexing control stream,
+effectively making it RAID 1 with 3 or more copies.
+
+Proposal: Write data to the end of a slab and fill in backward until the
+front of the slab is reached. When traversing an FST this would result in
+forward-only reads within a slab instead of backward-only reads.
+
+TODO: Decide whether FST transitions and values should be in separate
+substreams.
+
 ## Data Blocks
 
-Data within the byte stream is organized into blocks, with each block holding
+Data within the FST substream is organized into blocks, with each block holding
 one or more cryptographic references to its predecessor. This forms a sort of
 block chain.
 
