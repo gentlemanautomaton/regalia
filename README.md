@@ -234,8 +234,18 @@ One of the goals of this project is to explore the use of finite-state
 transducers for mapping key data. In FST parlance, the input tape provides the
 desired key and the output tape yields an offset or index that locates a value.
 
-Finite-state transducers are well suited for static data, but the complexity of
-their creation can create challenges for mutable or slowly changing data sets.
+Finite-state transducers are well suited for static data, but the complexity
+of their creation can create challenges for mutable or slowly changing data
+sets. Efficient storage in an FST requires efficient lookup of total and
+partial duplicate strings already present within the FST.
+
+Under consideration is a cuckoo hash that maps substrings to FST nodes. Such
+a hash could be rebuilt from the FST and thus would be ephemeral. Substrings
+could be split using content defined chunking techniques such as a rolling
+hash. Substrings shorter than the desired length may be padded, using an
+uncommon byte as the padding character. Substring collision is a likely
+artifact of subtree mutation, so a cuckoo hash variant that is tolerant of
+overloading is likely to be an improvement. 
 
 Each node in an FST is an N-way transition map, with N being the number of
 transitions for a particular node. When N is small, a simple data structure
